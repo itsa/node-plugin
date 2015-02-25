@@ -94,20 +94,42 @@
             expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.true;
             nodeSub1.unplug(plugins.Constrain);
             expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.false;
+            expect(nodeSub1.getAttr('constrain-ready')===null).to.be.true;
+            expect(nodeSub1.getAttr('plugin-constrain')===null).to.be.true;
         });
 
-        it('changing attributes', function (dome) {
+        it('changing attributes', function (done) {
             nodeSub1.plug(plugins.Constrain);
             expect(nodeSub1.getAttr('constrain-selector')).to.be.equal('window');
-console.warn('OKOKOK');
-            nodeSub1.plugin.constrain.model['constrain-selector'] = 'dummy';
+            nodeSub1.plugin.constrain.model.selector = 'dummy';
             async(function() {
                 // first async will make model sync with its attribute
                 later(function() {
-console.warn('CHECK '+nodeSub1.plugin.constrain.model['constrain-selector']);
                     expect(nodeSub1.getAttr('constrain-selector')).to.be.equal('dummy');
                     done();
-                }, 100);
+                }, 50);
+            });
+        });
+
+        it('plug with modeldata', function (done) {
+            nodeSub1.plug(plugins.Constrain, null, {selector: 'dummy2'});
+            async(function() {
+                // first async will make model sync with its attribute
+                later(function() {
+                    expect(nodeSub1.getAttr('constrain-selector')).to.be.equal('dummy2');
+                    done();
+                }, 50);
+            });
+        });
+
+        it('plug with config', function (done) {
+            nodeSub1.plug(plugins.Constrain, {selector: 'dummy3'});
+            async(function() {
+                // first async will make model sync with its attribute
+                later(function() {
+                    expect(nodeSub1.getAttr('constrain-selector')).to.be.equal('dummy3');
+                    done();
+                }, 50);
             });
         });
 
