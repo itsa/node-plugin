@@ -11,7 +11,7 @@
 
     var expect = require('chai').expect,
         should = require('chai').should(),
-        plugins = require("../index.js")(window),
+        plugins = require("../node-plugin.js")(window),
         NS = require('vdom/partials/vdom-ns.js')(window),
         nodeids = NS.nodeids,
         timers = require('utils/lib/timers.js'),
@@ -20,6 +20,7 @@
         node, nodeSub1, nodeSub2;
 
     require("vdom")(window);
+    require("constrain")(window);
 
     describe('General', function () {
 
@@ -46,19 +47,19 @@
         // Code to execute after every test.
         afterEach(function() {
             window.document.body.removeChild(node);
-            nodeSub1.unplug(plugins.Constrain);
+            nodeSub1.unplug('constrain');
         });
 
         it('plug', function () {
-            nodeSub1.plug(plugins.Constrain);
+            nodeSub1.plug('constrain');
 
             expect(nodeSub1.outerHTML.replace(' plugin-constrain="true"', '').replace(' constrain-ready="true"', '')).to.be.eql('<div constrain-selector="window"></div>');
             expect(nodeSub1.getOuterHTML().replace(' plugin-constrain="true"', '').replace(' constrain-ready="true"', '')).to.be.eql('<div constrain-selector="window"></div>');
             expect(nodeSub2.outerHTML).to.be.eql('<div></div>');
             expect(nodeSub2.getOuterHTML()).to.be.eql('<div></div>');
 
-            nodeSub1.unplug(plugins.Constrain);
-            nodeSub1.plug(plugins.Constrain, {selector: '#div1'});
+            nodeSub1.unplug('constrain');
+            nodeSub1.plug('constrain', {selector: '#div1'});
 
             expect(nodeSub1.outerHTML.replace(' plugin-constrain="true"', '').replace(' constrain-ready="true"', '')).to.be.eql('<div constrain-selector="#div1"></div>');
             expect(nodeSub1.getOuterHTML().replace(' plugin-constrain="true"', '').replace(' constrain-ready="true"', '')).to.be.eql('<div constrain-selector="#div1"></div>');
@@ -67,41 +68,41 @@
         });
 
         it('isPlugged', function () {
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.false;
-            expect(nodeSub2.isPlugged(plugins.Constrain)).to.be.false;
+            expect(nodeSub1.isPlugged('constrain')).to.be.false;
+            expect(nodeSub2.isPlugged('constrain')).to.be.false;
 
             expect(nodeSub1.outerHTML).to.be.eql('<div></div>');
             expect(nodeSub1.getOuterHTML()).to.be.eql('<div></div>');
 
-            nodeSub1.plug(plugins.Constrain);
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.true;
-            expect(nodeSub2.isPlugged(plugins.Constrain)).to.be.false;
+            nodeSub1.plug('constrain');
+            expect(nodeSub1.isPlugged('constrain')).to.be.true;
+            expect(nodeSub2.isPlugged('constrain')).to.be.false;
 
-            nodeSub1.unplug(plugins.Constrain);
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.false;
-            expect(nodeSub2.isPlugged(plugins.Constrain)).to.be.false;
+            nodeSub1.unplug('constrain');
+            expect(nodeSub1.isPlugged('constrain')).to.be.false;
+            expect(nodeSub2.isPlugged('constrain')).to.be.false;
 
-            nodeSub1.plug(plugins.Constrain, {selector: '#div1'});
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.true;
-            expect(nodeSub2.isPlugged(plugins.Constrain)).to.be.false;
+            nodeSub1.plug('constrain', {selector: '#div1'});
+            expect(nodeSub1.isPlugged('constrain')).to.be.true;
+            expect(nodeSub2.isPlugged('constrain')).to.be.false;
 
             nodeSub1.removeAttr('constrain-selector');
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.true;
+            expect(nodeSub1.isPlugged('constrain')).to.be.true;
         });
 
         it('unplug', function () {
-            nodeSub1.plug(plugins.Constrain);
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.true;
-            nodeSub1.unplug(plugins.Constrain);
-            expect(nodeSub1.isPlugged(plugins.Constrain)).to.be.false;
+            nodeSub1.plug('constrain');
+            expect(nodeSub1.isPlugged('constrain')).to.be.true;
+            nodeSub1.unplug('constrain');
+            expect(nodeSub1.isPlugged('constrain')).to.be.false;
             expect(nodeSub1.getAttr('constrain-ready')===null).to.be.true;
             expect(nodeSub1.getAttr('plugin-constrain')===null).to.be.true;
         });
 
         it('changing attributes', function (done) {
-            nodeSub1.plug(plugins.Constrain);
+            nodeSub1.plug('constrain');
             expect(nodeSub1.getAttr('constrain-selector')).to.be.equal('window');
-            nodeSub1.plugin.constrain.model.selector = 'dummy';
+            nodeSub1._plugin.constrain.model.selector = 'dummy';
             async(function() {
                 // first async will make model sync with its attribute
                 later(function() {
@@ -112,7 +113,7 @@
         });
 
         it('plug with modeldata', function (done) {
-            nodeSub1.plug(plugins.Constrain, null, {selector: 'dummy2'});
+            nodeSub1.plug('constrain', null, {selector: 'dummy2'});
             async(function() {
                 // first async will make model sync with its attribute
                 later(function() {
@@ -123,7 +124,7 @@
         });
 
         it('plug with config', function (done) {
-            nodeSub1.plug(plugins.Constrain, {selector: 'dummy3'});
+            nodeSub1.plug('constrain', {selector: 'dummy3'});
             async(function() {
                 // first async will make model sync with its attribute
                 later(function() {
