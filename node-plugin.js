@@ -17,8 +17,6 @@ require('js-ext/lib/object.js');
 require('js-ext/lib/string.js');
 require('js-ext/lib/promise.js');
 require('polyfill');
-require('event/extra/timer-finalize.js');
-require('event/extra/promise-finalize.js');
 
 var createHashMap = require('js-ext/extra/hashmap.js').createMap,
     fromCamelCase = function(input) {
@@ -37,11 +35,12 @@ module.exports = function (window) {
 
     require('vdom')(window);
     var NAME = '[ElementPlugin]: ',
+        CHECK_MUTATION_DELAY = 500,
         Classes = require('js-ext/extra/classes.js'),
         timers = require('utils/lib/timers.js'),
         Event = require('event-dom')(window),
-        asyncSilent = timers.asyncSilent,
-        laterSilent = timers.laterSilent,
+        async = timers.async,
+        later = timers.later,
         DELAY_DESTRUCTION = 5000, // must be kept below vnode.js its DESTROY_DELAY (which is currently 60000)
         DELAYED_EVT_TIME = 500,
         NATIVE_OBJECT_OBSERVE = !!Object.observe,
@@ -59,61 +58,9 @@ module.exports = function (window) {
         ATTRIBUTE_CHANGE = ATTRIBUTE+CHANGE,
         ATTRIBUTE_INSERT = ATTRIBUTE+INSERT,
         MUTATION_EVENTS = [NODE_REMOVE, NODE_INSERT, NODE_CONTENT_CHANGE, ATTRIBUTE_REMOVE, ATTRIBUTE_CHANGE, ATTRIBUTE_INSERT],
-        Base, pluginDOM, modelToAttrs, attrsToModel, syncPlugin, autoRefreshPlugin, pluginDOMresync, DEFAULT_DELAYED_FINALIZE_EVENTS;
+        Base, pluginDOM, modelToAttrs, attrsToModel, syncPlugin, pluginDOMresync;
 
     Object.protectedProp(window, '_ITSAPlugins', createHashMap());
-
-    /**
-     * Default internal hash containing all DOM-events that will not directly call `event-finalize`
-     * but after a delay of 1 second
-     *
-     * @property DEFAULT_DELAYED_FINALIZE_EVENTS
-     * @default {
-     *    mousedown: true,
-     *    mouseup: true,
-     *    mousemove: true,
-     *    panmove: true,
-     *    panstart: true,
-     *    panleft: true,
-     *    panright: true,
-     *    panup: true,
-     *    pandown: true,
-     *    pinchmove: true,
-     *    rotatemove: true,
-     *    focus: true,
-     *    manualfocus: true,
-     *    keydown: true,
-     *    keyup: true,
-     *    keypress: true,
-     *    blur: true,
-     *    resize: true,
-     *    scroll: true
-     * }
-     * @type Object
-     * @private
-     * @since 0.0.1
-    */
-    DEFAULT_DELAYED_FINALIZE_EVENTS = {
-        mousedown: true,
-        mouseup: true,
-        mousemove: true,
-        panmove: true,
-        panstart: true,
-        panleft: true,
-        panright: true,
-        panup: true,
-        pandown: true,
-        pinchmove: true,
-        rotatemove: true,
-        focus: true,
-        manualfocus: true,
-        keydown: true,
-        keyup: true,
-        keypress: true,
-        blur: true,
-        resize: true,
-        scroll: true
-    };
 
     /*
      * Inspects the DOM for Elements that have the plugin defined by their html and plugs the Plugin-Class.
@@ -126,7 +73,7 @@ module.exports = function (window) {
     pluginDOM = function(NewClass) {
         // asynchroniously we check all current elements and render when needed:
         var ns = NewClass.prototype.$ns;
-        asyncSilent(function() {
+        async(function() {
             var elements = DOCUMENT.getAll('[plugin-'+ns+'="true"]', true),
                 len = elements.length,
                 element, i;
@@ -148,7 +95,7 @@ module.exports = function (window) {
     pluginDOMresync = function(NewClass) {
         // asynchroniously we check all current elements and render when needed:
         var ns = NewClass.prototype.$ns;
-        asyncSilent(function() {
+        async(function() {
             var elements = DOCUMENT.getAll('[plugin-'+ns+'="true"]['+ns+'-ready="true"]', true),
                 len = elements.length,
                 element, i;
@@ -271,40 +218,6 @@ module.exports = function (window) {
         plugin.sync();
     };
 
-    /*
-     * In case `object.observe` is not present, will setup automaticly refresing the plugin on model-changes.
-     * Does not do anything when `object.observe` is present, because the object-observer takes care of this.
-     *
-     * @method autoRefreshPlugin
-     * @param plugin {Object} the plugin-instance
-     * @protected
-     * @since 0.0.1
-     */
-    autoRefreshPlugin = function(plugin) {
-        if (!NATIVE_OBJECT_OBSERVE) {
-            plugin._EventFinalizer = Event.finalize(function(e) {
-                var type = e.type;
-                if (!e._noRender && (!e.status || !e.status.renderPrevented)) {
-                    if (!MUTATION_EVENTS[type] && !type.endsWith('outside')) {
-                        if (plugin._DELAYED_FINALIZE_EVENTS[type]) {
-                            types.push(type);
-                            plugin.constructor.$registerDelay || (plugin.constructor.$registerDelay = laterSilent(function() {
-                                console.info('Event-finalizer will delayed-refresh itags because of events: '+JSON.stringify(types));
-                                syncPlugin(plugin, true);
-                                types.length = 0;
-                                plugin.constructor.$registerDelay = null;
-                            }, DELAYED_EVT_TIME));
-                        }
-                        else {
-                            console.info('Event-finalizer will refresh itags because of event: '+type);
-                            syncPlugin(plugin, true);
-                        }
-                    }
-                }
-            });
-        }
-    };
-
     // extend window.Element:
     window.Element && (function(HTMLElementPrototype) {
        /**
@@ -414,38 +327,6 @@ module.exports = function (window) {
         },
         {
             /*
-             * Internal hash containing the events which have a delayed Event-finalize synchronisation
-             * on browsers that don't support object.observe.
-             * Members of this object can be removed by calling `setDirectEventResponse`
-             *
-             * @property _DELAYED_FINALIZE_EVENTS
-             * @default {
-             *    mousedown: true,
-             *    mouseup: true,
-             *    mousemove: true,
-             *    panmove: true,
-             *    panstart: true,
-             *    panleft: true,
-             *    panright: true,
-             *    panup: true,
-             *    pandown: true,
-             *    pinchmove: true,
-             *    rotatemove: true,
-             *    focus: true,
-             *    manualfocus: true,
-             *    keydown: true,
-             *    keyup: true,
-             *    keypress: true,
-             *    blur: true,
-             *    resize: true,
-             *    scroll: true
-             * }
-             * @type Object
-             * @private
-             * @since 0.0.1
-            */
-            _DELAYED_FINALIZE_EVENTS: DEFAULT_DELAYED_FINALIZE_EVENTS.shallowClone(),
-            /*
              * Definition of all attributes: these attributes will be read during initalization and updated during `sync`
              * In the dom, the attributenames are prepended with `pluginName-`. The property-values should be the property-types
              * that belong to the property, this way the attributes get right casted into model.
@@ -490,13 +371,6 @@ module.exports = function (window) {
                     }
                     mergeCurrent && (model.merge(instance.model, {full: true}));
                     instance.model = model;
-                    if (NATIVE_OBJECT_OBSERVE) {
-                        observer = function() {
-                            syncPlugin(instance);
-                        };
-                        Object.observe(instance.model, observer);
-                        instance._observer = observer;
-                    }
                     (host.getAttr(instance.$ns+'-ready')==='true') && syncPlugin(instance);
                 }
             },
@@ -515,65 +389,22 @@ module.exports = function (window) {
                 (host.getAttr(ns+'-ready')==='true') || instance.render();
                 syncPlugin(instance);
                 host.setAttr(ns+'-ready', 'true', true);
+
+                if (NATIVE_OBJECT_OBSERVE) {
+                    observer = function() {
+                        syncPlugin(instance);
+                    };
+                    Object.observe(instance.model, observer);
+                    instance._observer = observer;
+                }
+                else {
+                    instance._mutationCheck = later(syncPlugin.bind(null, plugin, true), CHECK_MUTATION_DELAY);
+                }
+
                 autoRefreshPlugin(instance);
                 host._pluginReadyInfo || (host._pluginReadyInfo={});
                 host._pluginReadyInfo[ns] || (host._pluginReadyInfo[ns]=window.Promise.manage());
                 host._pluginReadyInfo[ns].fulfill();
-            },
-           /**
-            * Defines which domevents should lead to a direct sync by the Event-finalizer.
-            * Only needed for events that are in the list set by DEFAULT_DELAYED_FINALIZE_EVENTS:
-            *
-            * <ul>
-            *     <li>mousedown</li>
-            *     <li>mouseup</li>
-            *     <li>mousemove</li>
-            *     <li>panmove</li>
-            *     <li>panstart</li>
-            *     <li>panleft</li>
-            *     <li>panright</li>
-            *     <li>panup</li>
-            *     <li>pandown</li>
-            *     <li>pinchmove</li>
-            *     <li>rotatemove</li>
-            *     <li>focus</li>
-            *     <li>manualfocus</li>
-            *     <li>keydown</li>
-            *     <li>keyup</li>
-            *     <li>keypress</li>
-            *     <li>blur</li>
-            *     <li>resize</li>
-            *     <li>scroll</li>
-            * </ul>
-            *
-            * Events that are not in this list don't need to be set: they always go through the finalizer immediatly.
-            *
-            * You need to set this if the itag-definition its `sync`-method should be updated after one of the events in the list.
-            *
-            * @method setItagDirectEventResponse
-            * @param ItagClass {Class} The ItagClass that wants to register
-            * @param domEvents {Array|String} the domevents that should directly make the itag sync
-            * @since 0.0.1
-            */
-            setDirectEventResponse :function(domEvents) {
-                console.log(NAME+'setDirectEventResponse');
-                var instance = this;
-                if (!NATIVE_OBJECT_OBSERVE) {
-                    Array.isArray(domEvents) || (domEvents=[domEvents]);
-                    domEvents.forEach(function(domEvent) {
-                        domEvent.endsWith('outside') && (domEvent=domEvent.substr(0, domEvent.length-7));
-                        domEvent = domEvent.toLowerCase();
-                        if (domEvent==='blur') {
-                            console.warn('the event "blur" cannot be delayed, for it would lead to extremely many syncing before anything changes which you don\'t need');
-                        }
-                        else {
-                            if (DEFAULT_DELAYED_FINALIZE_EVENTS[domEvent]) {
-                                ('DELAYED_FINALIZE_EVENTS' in instance.constructor.prototypes) || instance.mergePrototypes({'DELAYED_FINALIZE_EVENTS': DEFAULT_DELAYED_FINALIZE_EVENTS.shallowClone()});
-                                delete instance.DELAYED_FINALIZE_EVENTS[domEvent];
-                            }
-                        }
-                    });
-                }
             },
             /*
              * Renders the plugin. This method is invoked only once: at the end of initialization.
@@ -631,7 +462,7 @@ module.exports = function (window) {
                     }
                 }
                 else {
-                    instance._EventFinalizer.detach();
+                    instance._mutationCheck.cancel();
                 }
                 attrs.each(
                     function(value, key) {
@@ -651,7 +482,7 @@ module.exports = function (window) {
         var element = e.target,
             ns, Plugin;
         // to prevent less userexperience, we plug asynchroniously
-        asyncSilent(function() {
+        async(function() {
             e.changed.forEach(function(item) {
                 if (item.attribute.substr(0, 7)==='plugin-') {
                     ns = item.attribute.substr(7);
@@ -676,7 +507,7 @@ module.exports = function (window) {
         var element = e.target,
             ns, Plugin;
         // to prevent less userexperience, we plug asynchroniously
-        asyncSilent(function() {
+        async(function() {
             e.changed.forEach(function(attribute) {
                 if (attribute.substr(0, 7)==='plugin-') {
                     ns = attribute.substr(7);
@@ -694,7 +525,7 @@ module.exports = function (window) {
     Event.after('UI:'+NODE_INSERT, function(e) {
         var element = e.target;
         // to prevent less userexperience, we plug asynchroniously
-        asyncSilent(function() {
+        async(function() {
             var attrs = element.vnode.attrs,
                 ns, Plugin;
             attrs && attrs.each(function(value, key) {
@@ -714,7 +545,7 @@ module.exports = function (window) {
     Event.after('UI:'+NODE_REMOVE, function(e) {
         var element = e.target;
         // to prevent less userexperience, we unplug after a delay
-        laterSilent(function() {
+        later(function() {
             var Plugin;
             if (element.plugin) {
                 element.plugin.each(function(value, ns) {
