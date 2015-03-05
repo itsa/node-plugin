@@ -296,6 +296,7 @@ module.exports = function (window) {
                             }, DELAYED_EVT_TIME));
                         }
                         else {
+                            console.info('Event-finalizer will refresh itags because of event: '+type);
                             syncPlugin(plugin, true);
                         }
                     }
