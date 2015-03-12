@@ -118,7 +118,7 @@ module.exports = function (window) {
         config || (config={});
         // read the current ns-attributes on the node, overrule them with config and set the new attributes
         attrs.each(function(value, key) {
-            attrValue = config[key] || host.getAttr(ns+key) || defaults[key];
+            attrValue = config.hasKey(key) ? config[key] : (host.getAttr(ns+key) || defaults[key]);
             attrValue = String(attrValue);
             if (attrValue) {
                 switch (value.toLowerCase()) {
@@ -413,7 +413,9 @@ module.exports = function (window) {
             defineWhenUndefined: function(key, value) {
                 var instance = this,
                     model = this.model;
-                model[key] || (model[key]=value);
+                if (value!==undefined) {
+                    model.hasKey(key) || (model[key]=value);
+                }
                 return instance;
             },
             /*
