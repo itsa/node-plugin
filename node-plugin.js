@@ -16,6 +16,7 @@
 require('js-ext/lib/object.js');
 require('js-ext/lib/string.js');
 require('js-ext/lib/promise.js');
+require('js-ext/extra/observers.js');
 require('polyfill');
 
 var createHashMap = require('js-ext/extra/hashmap.js').createMap,
