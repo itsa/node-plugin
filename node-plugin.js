@@ -166,11 +166,12 @@ module.exports = function (window) {
      */
     modelToAttrs = function(plugin) {
         console.log(NAME+'modelToAttrs');
-        var attrs = plugin.attrs,
+        var attrs = plugin.attrs.shallowClone(),
             model = plugin.model,
             domElement = plugin.host,
             ns = plugin.$ns,
             newAttrs = [];
+        attrs.merge(plugin.defaults);
         attrs.each(function(value, key) {
             model[key] && (model[key]!=='undefined') && (newAttrs[newAttrs.length] = {name: ns+'-'+fromCamelCase(key), value: model[key]});
         });
@@ -296,6 +297,7 @@ module.exports = function (window) {
             var instance = this;
             instance.host = hostElement;
             instance.model = {};
+            instance.model.merge(instance.defaults);
             attrsToModel(instance, config);
             hostElement.setAttr('plugin-'+instance.$ns, 'true', true);
             if (model) {
