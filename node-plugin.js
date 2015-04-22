@@ -171,7 +171,7 @@ module.exports = function (window) {
             domElement = plugin.host,
             ns = plugin.$ns,
             newAttrs = [];
-        attrs.merge(plugin.defaults);
+        attrs.merge(plugin.defaults, {replace: false});
         attrs.each(function(value, key) {
             model[key] && (model[key]!=='undefined') && (newAttrs[newAttrs.length] = {name: ns+'-'+fromCamelCase(key), value: model[key]});
         });
