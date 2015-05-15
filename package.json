@@ -31,7 +31,6 @@
         "polyfill": "itsa/polyfill",
         "js-ext": "itsa/js-ext",
         "utils": "itsa/utils",
-        "event": "itsa/event",
         "event-dom": "itsa/event-dom",
         "vdom": "itsa/vdom"
     },
