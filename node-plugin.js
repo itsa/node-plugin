@@ -304,7 +304,9 @@ module.exports = function (window) {
                 instance.bindModel(model, true);
             }
             else if (hostElement.getAttr(instance.$ns+'-ready')==='true') {
-                instance._observer = syncPlugin.bind(instance);
+                instance._observer = function() {
+                    syncPlugin.call(instance);
+                };
                 instance.model.observe(instance._observer);
             }
             modelToAttrs(instance);
@@ -353,7 +355,9 @@ module.exports = function (window) {
                     mergeCurrent && (model.merge(instance.model, {full: true}));
                     instance.model = model;
                     if (host.getAttr(instance.$ns+'-ready')==='true') {
-                        instance._observer = syncPlugin.bind(instance);
+                        instance._observer = function() {
+                            syncPlugin.call(instance);
+                        };
                         instance.model.observe(instance._observer);
                         syncPlugin.call(instance);
                     }
@@ -373,7 +377,9 @@ module.exports = function (window) {
                     host = instance.host;
 
                 if (!instance._observer) {
-                    instance._observer = syncPlugin.bind(instance);
+                    instance._observer = function() {
+                        syncPlugin.call(instance);
+                    };
                     instance.model.observe(instance._observer);
                 }
                 (host.getAttr(ns+'-ready')==='true') || instance.render();
